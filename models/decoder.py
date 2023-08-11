@@ -1,12 +1,7 @@
-from typing import Optional, List, Union
-from segmentation_models_pytorch.base import modules as md, SegmentationModel
+from segmentation_models_pytorch.base import modules as md
 from segmentation_models_pytorch.base.modules import Activation
-
-from segmentation_models_pytorch.encoders import get_encoder
 from torch import nn
 import torch.nn.functional as F
-from torchvision import models
-from torchvision.models import efficientnet_v2_s, EfficientNet_V2_S_Weights
 
 
 class DecoderBlock(nn.Module):
@@ -75,7 +70,7 @@ class Decoder(nn.Module):
             decoder_channels,
             n_blocks=5,
             use_batchnorm=True,
-            bottleneck_channels=32,
+            bottleneck_shape=(1, 16, 16),
     ):
         super().__init__()
 
@@ -87,7 +82,7 @@ class Decoder(nn.Module):
             )
 
         # computing blocks input and output channels
-        head_channels = bottleneck_channels
+        head_channels = bottleneck_shape[0]
         in_channels = [head_channels] + list(decoder_channels[:-1])
         out_channels = decoder_channels
 
@@ -98,8 +93,14 @@ class Decoder(nn.Module):
             for in_ch, out_ch in zip(in_channels, out_channels)
         ]
         self.blocks = nn.ModuleList(blocks)
+        self.bottleneck_shape = bottleneck_shape
 
-    def forward(self, x):
+
+    def forward(self, x, output_size=(128, 128)):
+        n_upsample_blocks = len(self.blocks)
+        h, w = output_size
+        x = F.interpolate(x, size=(h // 2 ** n_upsample_blocks, w // 2 ** n_upsample_blocks), mode="nearest")
+
         for i, decoder_block in enumerate(self.blocks):
             x = decoder_block(x)
 

@@ -10,7 +10,7 @@ import torchinfo
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from dataset import ObservationDataset, AddGaussianNoise, target_transform
+from dataset import ObservationDataset, AddGaussianNoise, get_train_transforms, get_test_transforms
 from models.unet import Unet
 
 
@@ -45,6 +45,8 @@ accelerator.init_trackers(
 )
 
 unet = Unet(**model_config["unet"])
+unet.train()
+
 
 torchinfo.summary(unet, input_size=(1, 1, image_size, image_size))
 
@@ -70,21 +72,24 @@ test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_dataloader_co
 
 unet, optimizer, dataloader = accelerator.prepare(unet, optimizer, dataloader)
 
+train_transform = get_train_transforms(image_size)
+test_transform = get_test_transforms(image_size)
+
 for epoch in tqdm(range(train_config["epochs"])):
     for i, batch in tqdm(enumerate(dataloader)):
         with accelerator.accumulate(unet):
             batch = batch[0]
             batch = batch.to(torch.float32)  # workaround
-            input_ = target_transform(batch)
+            input_ = train_transform(batch)
             output = unet(input_)
             loss = torch.nn.functional.mse_loss(output, input_)
             accelerator.backward(loss)
-            accelerator.clip_grad_norm_(unet.parameters(), 0.5)
+            accelerator.clip_grad_norm_(unet.parameters(), 1.0)
             optimizer.step()
             optimizer.zero_grad()
 
             if (epoch + 1) * i % train_config["log_interval"] == 0:
-                accelerator.log({"loss": loss})
+                accelerator.log({"loss": loss}, step=(epoch + 1) * i)
 
             if (epoch + 1) * i % train_config["log_interval"] == 0:
                 batch = rearrange(batch, 'b c h w -> b h w c').detach().cpu().numpy()
@@ -94,7 +99,7 @@ for epoch in tqdm(range(train_config["epochs"])):
                 out_images = [wandb.Image(img) for img in output]
                 input_images = [wandb.Image(img) for img in input_]
                 accelerator.log({"target": in_images, "output": out_images,
-                                 "input": input_images})
+                                 "input": input_images},step=(epoch + 1) * i)
             if (epoch + 1) * i % train_config["eval_interval"] == 0:
                 unet.eval()
                 with torch.no_grad():
@@ -103,6 +108,7 @@ for epoch in tqdm(range(train_config["epochs"])):
                     test_batches = []
                     for test_batch in test_dataloader:
                         test_batch = test_batch[0]
+                        test_batch = test_transform(test_batch)
                         test_batch = test_batch.to(torch.float32).to(accelerator.device)
                         test_output = unet(test_batch)
                         test_loss += torch.nn.functional.mse_loss(test_output, test_batch)
@@ -121,7 +127,7 @@ for epoch in tqdm(range(train_config["epochs"])):
                     accelerator.log({"test_loss": test_loss, "test_target": test_batch_images,
                                         "test_output": test_output_images}, step=(epoch + 1) * i)
 
-
-    accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")
+    if (epoch + 1) % train_config["save_interval"] == 0:
+        accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")
 
 accelerator.end_training()

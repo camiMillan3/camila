@@ -50,7 +50,7 @@ class Unet(nn.Module):
         decoder_use_batchnorm: bool = True,
         decoder_channels: List[int] = (256, 128, 64, 32, 16),
         activation: Optional[Union[str, callable]] = None,
-        bottleneck_channels: int = 128,
+        bottleneck_shape: List[int] = (1, 16, 16),
     ):
         super().__init__()
 
@@ -59,14 +59,14 @@ class Unet(nn.Module):
             in_channels=1,
             depth=encoder_depth,
             weights=encoder_weights,
-            bottleneck_channels=bottleneck_channels,
+            bottleneck_shape=bottleneck_shape,
         )
 
         self.decoder = Decoder(
             decoder_channels=decoder_channels,
             n_blocks=encoder_depth,
             use_batchnorm=decoder_use_batchnorm,
-            bottleneck_channels=bottleneck_channels,
+            bottleneck_shape=bottleneck_shape,
         )
 
         self.reconstruction_head = ReconstructionHead(
@@ -99,10 +99,11 @@ class Unet(nn.Module):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
 
         self.check_input_shape(x)
+        input_size = x.shape[-2:]
 
         x = self.encoder(x)
 
-        x = self.decoder(x)
+        x = self.decoder(x, output_size=input_size)
 
         x = self.reconstruction_head(x)
 
