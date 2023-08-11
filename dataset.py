@@ -75,7 +75,6 @@ def get_train_transforms(image_size):
         #RandomAffine(degrees=5, translate=(0.3, 0.3), scale=(0.7, 1.3), shear=5, fill=0),
         torchvision.transforms.Resize((image_size, image_size)),
         AddGaussianNoise(0., 0.01),
-
      ]
 )
 

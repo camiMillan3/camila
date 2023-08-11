@@ -50,7 +50,7 @@ def eval_data_unet(data_unet, accelerator, test_dataloader, step):
             y, x, _ = test_batch
             y = y.to(torch.float32).to(accelerator.device)
             x = x.to(torch.float32).to(accelerator.device)
-            y_pred = data_unet(x, y.shape[1:])
+            y_pred = data_unet(x, y.shape[2:])
             test_loss += torch.nn.functional.mse_loss(y_pred, y)
             test_batches.append(y)
             test_outputs.append(y_pred)

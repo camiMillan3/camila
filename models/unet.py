@@ -164,7 +164,7 @@ class DataUnet(nn.Module):
         :param output_size: Should be the image sized used for training
         :return:
         """
-        print("x shape", x.shape)
+        assert len(output_size) == 2, output_size
 
         x = self.encoder(x)
 

@@ -53,4 +53,4 @@ train:
   log_image_interval: 500
   log_interval: 500
   eval_interval: 500
-  save_interval: 1
+  save_interval: 500
