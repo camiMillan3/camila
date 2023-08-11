@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 import torchvision
+from einops import rearrange
 from torch.utils.data import Dataset
 from torchvision.transforms import RandomAffine
 
@@ -42,6 +43,7 @@ class ObservationDataset(Dataset):
         _id, _file = self.data[idx]
         y = np.load(_file)
         x = np.load(os.path.join(self.path, f'X_{_id}.npy'))
+        x = rearrange(x, 'h w c -> c h w')
 
         y = np.expand_dims(y, axis=-1) / 6
 

@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from dataset import ObservationDataset, AddGaussianNoise, get_train_transforms, get_test_transforms
 from models.unet import Unet
+from utils import eval_unet, log_images
 
 
 def parse_args():
@@ -20,114 +21,85 @@ def parse_args():
 
     return parser.parse_args()
 
+if __name__ == "__main__":
+    args = parse_args()
 
-args = parse_args()
+    with open(args.config_file) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
 
-with open(args.config_file) as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+    model_config = config["models"]
+    optim_config = config["optimizer"]
+    dataset_config = config["dataset"]
+    test_dataset_config = config["test_dataset"]
+    dataloader_config = config["dataloader"]
+    test_dataloader_config = config["test_dataloader"]
+    train_config = config["train"]
+    image_size = train_config["image_size"]
 
-model_config = config["models"]
-optim_config = config["optimizer"]
-dataset_config = config["dataset"]
-test_dataset_config = config["test_dataset"]
-dataloader_config = config["dataloader"]
-test_dataloader_config = config["test_dataloader"]
-train_config = config["train"]
-image_size = train_config["image_size"]
+    # Tell the Accelerator object to log with wandb
+    accelerator = Accelerator(log_with="wandb")
 
-# Tell the Accelerator object to log with wandb
-accelerator = Accelerator(log_with="wandb")
+    # Initialise your wandb run, passing wandb parameters and any config information
+    accelerator.init_trackers(
+        project_name=config["name"],
+        config=config,
+    )
 
-# Initialise your wandb run, passing wandb parameters and any config information
-accelerator.init_trackers(
-    project_name=config["name"],
-    config=config,
-)
-
-unet = Unet(**model_config["unet"])
-unet.train()
+    unet = Unet(**model_config["unet"])
+    unet.train()
 
 
-torchinfo.summary(unet, input_size=(1, 1, image_size, image_size))
+    torchinfo.summary(unet, input_size=(1, 1, image_size, image_size))
 
-encoder_output = unet.encoder(torch.randn(1, 1, 256, 256, device=accelerator.device), )
-print(f"Encoder output shape: {encoder_output.shape}")
+    encoder_output = unet.encoder(torch.randn(1, 1, 256, 256, device=accelerator.device), )
+    print(f"Encoder output shape: {encoder_output.shape}")
 
-optimizer = torch.optim.AdamW(unet.parameters(), **optim_config["kwargs"])
+    optimizer = torch.optim.AdamW(unet.parameters(), **optim_config["kwargs"])
 
-dataset = ObservationDataset(**dataset_config,
-                             y_transform=torchvision.transforms.Compose(
-                                 [torchvision.transforms.ToTensor(), ]
-                             ),
-                             )
+    dataset = ObservationDataset(**dataset_config,
+                                 y_transform=torchvision.transforms.Compose(
+                                     [torchvision.transforms.ToTensor(), ]
+                                 ),
+                                 )
 
-test_dataset = ObservationDataset(**test_dataset_config,
-                                  y_transform=torchvision.transforms.Compose(
-                                      [torchvision.transforms.ToTensor(), ]
-                                  ),
-                                  )
+    test_dataset = ObservationDataset(**test_dataset_config,
+                                      y_transform=torchvision.transforms.Compose(
+                                          [torchvision.transforms.ToTensor(), ]
+                                      ),
+                                      )
 
-dataloader = torch.utils.data.DataLoader(dataset, **dataloader_config)
-test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_dataloader_config)
+    dataloader = torch.utils.data.DataLoader(dataset, **dataloader_config)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_dataloader_config)
 
-unet, optimizer, dataloader = accelerator.prepare(unet, optimizer, dataloader)
+    unet, optimizer, dataloader = accelerator.prepare(unet, optimizer, dataloader)
 
-train_transform = get_train_transforms(image_size)
-test_transform = get_test_transforms(image_size)
+    train_transform = get_train_transforms(image_size)
+    test_transform = get_test_transforms(image_size)
 
-for epoch in tqdm(range(train_config["epochs"])):
-    for i, batch in tqdm(enumerate(dataloader)):
-        with accelerator.accumulate(unet):
-            batch = batch[0]
-            batch = batch.to(torch.float32)  # workaround
-            input_ = train_transform(batch)
-            output = unet(input_)
-            loss = torch.nn.functional.mse_loss(output, input_)
-            accelerator.backward(loss)
-            accelerator.clip_grad_norm_(unet.parameters(), 1.0)
-            optimizer.step()
-            optimizer.zero_grad()
+    for epoch in tqdm(range(train_config["epochs"])):
+        for i, batch in tqdm(enumerate(dataloader)):
+            step = (epoch + 1) * i
+            with accelerator.accumulate(unet):
+                batch = batch[0]
+                gt = batch.to(torch.float32)  # workaround
+                y = train_transform(gt)
+                y_pred = unet(y)
+                loss = torch.nn.functional.mse_loss(y_pred, y)
+                accelerator.backward(loss)
+                accelerator.clip_grad_norm_(unet.parameters(), 1.0)
+                optimizer.step()
+                optimizer.zero_grad()
 
-            if (epoch + 1) * i % train_config["log_interval"] == 0:
-                accelerator.log({"loss": loss}, step=(epoch + 1) * i)
+                if step % train_config["log_interval"] == 0:
+                    accelerator.log({"loss": loss}, step=(epoch + 1) * i)
 
-            if (epoch + 1) * i % train_config["log_interval"] == 0:
-                batch = rearrange(batch, 'b c h w -> b h w c').detach().cpu().numpy()
-                output = rearrange(output, 'b c h w -> b h w c').detach().cpu().numpy()
-                input_ = rearrange(input_, 'b c h w -> b h w c').detach().cpu().numpy()
-                in_images = [wandb.Image(img) for img in batch]
-                out_images = [wandb.Image(img) for img in output]
-                input_images = [wandb.Image(img) for img in input_]
-                accelerator.log({"target": in_images, "output": out_images,
-                                 "input": input_images},step=(epoch + 1) * i)
-            if (epoch + 1) * i % train_config["eval_interval"] == 0:
-                unet.eval()
-                with torch.no_grad():
-                    test_loss = 0
-                    test_outputs = []
-                    test_batches = []
-                    for test_batch in test_dataloader:
-                        test_batch = test_batch[0]
-                        test_batch = test_transform(test_batch)
-                        test_batch = test_batch.to(torch.float32).to(accelerator.device)
-                        test_output = unet(test_batch)
-                        test_loss += torch.nn.functional.mse_loss(test_output, test_batch)
-                        test_batches.append(test_batch)
-                        test_outputs.append(test_output)
+                if step % train_config["log_interval"] == 0:
+                    log_images(gt, y_pred, y, accelerator, step)
+                if (epoch + 1) * i % train_config["eval_interval"] == 0:
+                    eval_unet(unet, accelerator, test_dataloader, step=step,
+                              test_transform=test_transform)
 
-                    test_loss /= len(test_dataloader)
-                    test_batch = torch.cat(test_batches, dim=0)
-                    test_output = torch.cat(test_outputs, dim=0)
+        if (epoch + 1) % train_config["save_interval"] == 0:
+            accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")
 
-                    test_batch = rearrange(test_batch, 'b c h w -> b h w c').detach().cpu().numpy()
-                    test_output = rearrange(test_output, 'b c h w -> b h w c').detach().cpu().numpy()
-                    test_batch_images = [wandb.Image(img) for img in test_batch]
-                    test_output_images = [wandb.Image(img) for img in test_output]
-
-                    accelerator.log({"test_loss": test_loss, "test_target": test_batch_images,
-                                        "test_output": test_output_images}, step=(epoch + 1) * i)
-
-    if (epoch + 1) % train_config["save_interval"] == 0:
-        accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")
-
-accelerator.end_training()
+    accelerator.end_training()

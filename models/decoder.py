@@ -98,6 +98,7 @@ class Decoder(nn.Module):
 
     def forward(self, x, output_size=(128, 128)):
         n_upsample_blocks = len(self.blocks)
+        print(output_size)
         h, w = output_size
         x = F.interpolate(x, size=(h // 2 ** n_upsample_blocks, w // 2 ** n_upsample_blocks), mode="nearest")
 
