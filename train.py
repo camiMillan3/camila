@@ -29,7 +29,9 @@ with open(args.config_file) as f:
 model_config = config["models"]
 optim_config = config["optimizer"]
 dataset_config = config["dataset"]
+test_dataset_config = config["test_dataset"]
 dataloader_config = config["dataloader"]
+test_dataloader_config = config["test_dataloader"]
 train_config = config["train"]
 image_size = train_config["image_size"]
 
@@ -57,13 +59,14 @@ dataset = ObservationDataset(**dataset_config,
                              ),
                              )
 
-test_dataset = ObservationDataset(**dataset_config,
+test_dataset = ObservationDataset(**test_dataset_config,
                                   y_transform=torchvision.transforms.Compose(
                                       [torchvision.transforms.ToTensor(), ]
                                   ),
                                   )
 
 dataloader = torch.utils.data.DataLoader(dataset, **dataloader_config)
+test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_dataloader_config)
 
 unet, optimizer, dataloader = accelerator.prepare(unet, optimizer, dataloader)
 
@@ -95,17 +98,28 @@ for epoch in tqdm(range(train_config["epochs"])):
             if (epoch + 1) * i % train_config["eval_interval"] == 0:
                 unet.eval()
                 with torch.no_grad():
-                    test_batch = next(iter(test_dataset))
-                    test_batch = test_batch[0].unsqueeze(0)
-                    test_batch = test_batch.to(torch.float32).to(accelerator.device)
-                    test_output = unet(test_batch)
-                    test_loss = torch.nn.functional.mse_loss(test_output, test_batch)
+                    test_loss = 0
+                    test_outputs = []
+                    test_batches = []
+                    for test_batch in test_dataloader:
+                        test_batch = test_batch[0]
+                        test_batch = test_batch.to(torch.float32).to(accelerator.device)
+                        test_output = unet(test_batch)
+                        test_loss += torch.nn.functional.mse_loss(test_output, test_batch)
+                        test_batches.append(test_batch)
+                        test_outputs.append(test_output)
+
+                    test_loss /= len(test_dataloader)
+                    test_batch = torch.cat(test_batches, dim=0)
+                    test_output = torch.cat(test_outputs, dim=0)
+
                     test_batch = rearrange(test_batch, 'b c h w -> b h w c').detach().cpu().numpy()
                     test_output = rearrange(test_output, 'b c h w -> b h w c').detach().cpu().numpy()
                     test_batch_images = [wandb.Image(img) for img in test_batch]
                     test_output_images = [wandb.Image(img) for img in test_output]
+
                     accelerator.log({"test_loss": test_loss, "test_target": test_batch_images,
-                                     "test_output": test_output_images}, step=(epoch + 1) * i)
+                                        "test_output": test_output_images}, step=(epoch + 1) * i)
 
 
     accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")

@@ -5,18 +5,27 @@ models:
     encoder_name: 'timm-efficientnet-b1'
     encoder_weights: 'noisy-student'
     activation: 'sigmoid'
-    encoder_depth: 4
-    decoder_channels: [256, 128, 64, 32]
+    encoder_depth: 3
+    decoder_channels: [256, 128, 64]
     bottleneck_channels: 1
     decoder_use_batchnorm: True
 
 dataset:
   path: data/Dataset_One_Circle_1328_128px
 
+test_dataset:
+  path: data/Dataset_One_Circle_1328_128px_test
+
 dataloader:
   batch_size: 8
   num_workers: 8
   shuffle: True
+  pin_memory: False
+
+test_dataloader:
+  batch_size: 8
+  num_workers: 1
+  shuffle: False
   pin_memory: False
 
 
