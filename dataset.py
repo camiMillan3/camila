@@ -43,16 +43,17 @@ class ObservationDataset(Dataset):
         _id, _file = self.data[idx]
         y = np.load(_file)
         x = np.load(os.path.join(self.path, f'X_{_id}.npy'))
-        x = rearrange(x, 'h w c -> c h w')
+        # x = rearrange(x, 'h w c -> c h w')
 
-        y = np.expand_dims(y, axis=-1) / 6
-
-
+        y = np.expand_dims(y, axis=-1) / 6 # normalize to [0, 1]
 
         if self.y_transform is not None:
             y = self.y_transform(y)
         if self.x_transform is not None:
-            x = self.x_transform(x)
+            x0 = self.x_transform(x[..., 0])
+            x1 = self.x_transform(x[..., 1])
+
+            x = torch.cat([x0, x1], dim=0)
 
         return y, x, _id
 

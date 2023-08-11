@@ -18,7 +18,7 @@ models:
     decoder_use_batchnorm: True
     encoder_params:
       bottleneck_channels: 1
-      channels: [ 16, 32, 64 ]
+      channels: [ 32, 64, 128 ]
 
 dataset:
   path: data/Dataset_One_Circle_1328_128px

@@ -23,6 +23,8 @@ def parse_args():
 
     return parser.parse_args()
 
+def normalize(x):
+    return (x - x.min()) / (x.max() - x.min())
 
 if __name__ == "__main__":
     args = parse_args()
@@ -53,6 +55,10 @@ if __name__ == "__main__":
         torch.load(args.unet_checkpoint)
         data_unet.load_state_dict(torch.load(args.unet_checkpoint), strict=False)
 
+        # freeze decoder
+        for param in data_unet.decoder.parameters():
+            param.requires_grad = False
+
 
     torchinfo.summary(data_unet, input_data={
         "x": torch.randn(1, 2, 16, 16),
@@ -67,13 +73,24 @@ if __name__ == "__main__":
                                  y_transform=torchvision.transforms.Compose(
                                      [torchvision.transforms.ToTensor(), ]
                                  ),
-                                 )
+                                 x_transform=torchvision.transforms.Compose(
+                                     [
+                                         torchvision.transforms.ToTensor(),
+                                         torchvision.transforms.Lambda(lambda x: normalize(x)),
+                                     ]
+                                    ))
 
     test_dataset = ObservationDataset(**test_dataset_config,
                                       y_transform=torchvision.transforms.Compose(
                                           [torchvision.transforms.ToTensor(), ]
                                       ),
+                                      x_transform=torchvision.transforms.Compose(
+                                            [
+                                                torchvision.transforms.ToTensor(),
+                                                torchvision.transforms.Lambda(lambda x: normalize(x)),
+                                            ]
                                       )
+                                        )
 
     dataloader = torch.utils.data.DataLoader(dataset, **dataloader_config)
     test_dataloader = torch.utils.data.DataLoader(test_dataset, **test_dataloader_config)
