@@ -15,7 +15,9 @@ class ObservationDataset(Dataset):
 
     def __init__(self, path, x_transform=None,
                     y_transform=None):
-        self.path = path
+        super().__init__()
+
+        self.path = os.path.abspath(path)
         self.x_transform = x_transform
         self.y_transform = y_transform
 
@@ -37,8 +39,8 @@ class ObservationDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        _id, file = self.data[idx]
-        y = np.load(file)
+        _id, _file = self.data[idx]
+        y = np.load(_file)
         x = np.load(os.path.join(self.path, f'X_{_id}.npy'))
 
         y = np.expand_dims(y, axis=-1) / 6
