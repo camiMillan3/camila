@@ -98,14 +98,7 @@ class Unet(nn.Module):
     def forward(self, x):
         """Sequentially pass `x` trough model`s encoder, decoder and heads"""
 
-        self.check_input_shape(x)
-        input_size = x.shape[-2:]
-
-        x = self.encoder(x)
-
-        x = self.decoder(x, output_size=input_size)
-
-        x = self.reconstruction_head(x)
+        x, _ = self.forward_with_encoder(x)
 
         return x
 

@@ -25,7 +25,7 @@ class RunningStatistics(nn.Module):
 class SensorDataEncoderConv(nn.Module):
     # input data is 16x16x2
     # output data is 16x16x1 (depends on the image size and the number of channels)
-    def __init__(self, channels=(16, 32, 64), bottleneck_channels=1, input_channels=2,
+    def __init__(self, channels=(16, 32, 64), bottleneck_shape=(1, 16, 16), input_channels=2,
                  kernels=(3, 3, 3)):
         super().__init__()
         blocks = []
@@ -56,13 +56,16 @@ class SensorDataEncoderConv(nn.Module):
             )
 
         self.out_block = nn.Sequential(
-            nn.Conv2d(channels[-1], bottleneck_channels, kernel_size=1),
-            nn.BatchNorm2d(bottleneck_channels),
-            nn.Tanh(),
+            nn.Conv2d(channels[-1], bottleneck_shape[0], kernel_size=1),
+            nn.BatchNorm2d(bottleneck_shape[0]),
         )
+        self.out_fc = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
+                                bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
+        self.out_act = nn.Tanh()
 
         self.blocks = nn.Sequential(*blocks)
         self.skip_blocks = nn.Sequential(*skip_blocks)
+        self.bottleneck_shape = bottleneck_shape
 
         self.running_stats = RunningStatistics(input_channels)
 
@@ -75,6 +78,10 @@ class SensorDataEncoderConv(nn.Module):
             x = self.blocks[i](x) + self.skip_blocks[i](x)
 
         x = self.out_block(x)
+        x = x.view(x.size(0), -1)
+        x = self.out_fc(x)
+        x = self.out_act(x)
+        x = x.view(x.size(0), *self.bottleneck_shape)
 
         return x
 

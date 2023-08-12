@@ -2,10 +2,13 @@ import os
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision
-from einops import rearrange
 from torch.utils.data import Dataset
-from torchvision.transforms import RandomAffine
+from torchvision.transforms import InterpolationMode, ColorJitter
+from torchvision.transforms.v2 import RandomAffine
+
+from models.data_encoder import min_max_scale
 
 
 class ObservationDataset(Dataset):
@@ -15,12 +18,14 @@ class ObservationDataset(Dataset):
     # X_<id>.npy
 
     def __init__(self, path, x_transform=None,
-                    y_transform=None):
+                    y_transform=None, y_min=0, y_max=6):
         super().__init__()
 
         self.path = os.path.abspath(path)
         self.x_transform = x_transform
         self.y_transform = y_transform
+        self.y_min = y_min
+        self.y_max = y_max
 
         self.data = []
         self.data_lookup = {}
@@ -45,7 +50,10 @@ class ObservationDataset(Dataset):
         x = np.load(os.path.join(self.path, f'X_{_id}.npy'))
         # x = rearrange(x, 'h w c -> c h w')
 
-        y = np.expand_dims(y, axis=-1) / 6 # normalize to [0, 1]
+        y = np.expand_dims(y, axis=-1)
+        # normalize to [0, 1]
+        y = min_max_scale(y, self.y_min, self.y_max)
+
 
         if self.y_transform is not None:
             y = self.y_transform(y)
@@ -70,12 +78,32 @@ class AddGaussianNoise(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
+class TensorMaskedColorJitter:
+    def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, except_values=(0,)):
+        self.color_jitter = ColorJitter(brightness=brightness, contrast=contrast, saturation=saturation, hue=hue)
+        self.except_values = except_values
+
+    def __call__(self, tensor):
+
+        # Apply the color jitter transformation to the PIL Image
+        output_tensor = self.color_jitter(tensor)
+
+        for except_value in self.except_values:
+            # Create a mask of pixels that are zero in the original tensor
+            mask = (tensor == except_value).all(axis=0)
+
+            # Apply the mask to keep zero values unchanged
+            output_tensor = mask * tensor + (1 - mask) * output_tensor
+
+        return output_tensor
+
 def get_y_train_transforms(image_size):
     return torchvision.transforms.Compose(
     [
-        #RandomAffine(degrees=5, translate=(0.3, 0.3), scale=(0.7, 1.3), shear=5, fill=0),
         torchvision.transforms.Resize((image_size, image_size)),
-        AddGaussianNoise(0., 0.01),
+        RandomAffine(degrees=180, fill=0, interpolation=InterpolationMode.BILINEAR),
+        #TensorMaskedColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4),
+        #AddGaussianNoise(0., 0.01),
      ]
 )
 
@@ -86,6 +114,3 @@ def get_y_test_transforms(image_size):
      ]
 )
 
-
-def normalize(x):
-    return (x - x.min()) / (x.max() - x.min())

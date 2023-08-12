@@ -18,8 +18,10 @@ from utils import eval_unet, log_images
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_file", "-c", type=str, default="config/base.yml")
+    parser.add_argument("--unet_checkpoint", "-u", type=str, default=None)
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -48,6 +50,10 @@ if __name__ == "__main__":
     unet = Unet(**model_config["unet"])
     unet.train()
 
+    if args.unet_checkpoint is not None:
+        torch.load(args.unet_checkpoint)
+        unet.load_state_dict(torch.load(args.unet_checkpoint), strict=True)
+        print(f"Loaded checkpoint from {args.unet_checkpoint}")
 
     torchinfo.summary(unet, input_size=(1, 1, image_size, image_size))
 

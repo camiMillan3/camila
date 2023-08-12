@@ -2,25 +2,25 @@ name: camila
 
 models:
   unet:
-    encoder_name: 'efficientnet-b3'
+    encoder_name: vgg16 # efficientnet-b2
     encoder_weights: 'imagenet'
     activation: 'sigmoid'
-    depth: 3
-    decoder_channels: [256, 128, 64]
+    depth: 4
+    decoder_channels: [128, 64, 32, 16]
     bottleneck_shape: [1, 16, 16]
     decoder_use_batchnorm: True
 
   data_unet: # should be the same as unet
     activation: 'sigmoid'
-    depth: 3
-    decoder_channels: [512, 256, 128]
+    depth: 4
+    decoder_channels:  [128, 64, 32, 16]
     bottleneck_shape: [1, 16, 16]
     decoder_use_batchnorm: True
     encoder_type: cnn
     encoder_params:
-      bottleneck_channels: 1
-      channels: [ 8, 16, 32, 64 ]
-      kernels: [ 3, 3, 5, 7 ]
+      bottleneck_shape: [1, 16, 16]
+      channels: [ 8, 16, 32]
+      kernels: [ 3, 5, 7 ]
     #encoder_type: dense
     #encoder_params:
     #  bottleneck_channels: 1
@@ -59,6 +59,6 @@ train:
   image_size: 128
 
   log_image_interval: 500
-  log_interval: 500
+  log_interval: 50
   eval_interval: 500
   save_interval: 10 # is epochs

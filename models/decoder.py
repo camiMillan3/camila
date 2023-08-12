@@ -95,10 +95,16 @@ class Decoder(nn.Module):
         self.blocks = nn.ModuleList(blocks)
         self.bottleneck_shape = bottleneck_shape
 
+        self.in_fc = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
+                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
+
 
     def forward(self, x, output_size=(128, 128)):
         n_upsample_blocks = len(self.blocks)
         h, w = output_size
+        x = x.view(x.size(0), -1)
+        x = self.in_fc(x)
+        x = x.view(x.size(0), *self.bottleneck_shape)
         x = F.interpolate(x, size=(h // 2 ** n_upsample_blocks, w // 2 ** n_upsample_blocks), mode="nearest")
 
         for i, decoder_block in enumerate(self.blocks):
