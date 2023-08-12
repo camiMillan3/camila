@@ -118,7 +118,7 @@ class Unet(nn.Module):
         return x, encoder_output
 
 
-class DataUnet(nn.Module):
+class SensorDataUnet(nn.Module):
     def __init__(
             self,
             encoder_params: dict,
@@ -180,12 +180,23 @@ class DataUnet(nn.Module):
         :param output_size: Should be the image sized used for training
         :return:
         """
+        x, _ = self.forward_with_encoder(x, output_size)
+        return x
+
+    def forward_with_encoder(self, x, output_size):
+        """
+
+        :param x:
+        :param output_size: Should be the image sized used for training
+        :return:
+        """
         assert len(output_size) == 2, output_size
 
         x = self.encoder(x)
+        encoder_output = x
 
         x = self.decoder(x, output_size=output_size)
 
         x = self.reconstruction_head(x)
 
-        return x
+        return x, encoder_output

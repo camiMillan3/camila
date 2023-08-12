@@ -10,8 +10,8 @@ import torchinfo
 from tqdm import tqdm
 
 from dataset import ObservationDataset, get_y_train_transforms, get_y_test_transforms
-from models.unet import Unet, DataUnet
-from utils import log_images, eval_data_unet
+from models.unet import Unet, SensorDataUnet
+from utils import log_images, eval_sensor_data_unet
 
 
 def parse_args():
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Tell the Accelerator object to log with wandb
     accelerator = Accelerator(log_with="wandb")
 
-    data_unet = DataUnet(**model_config["data_unet"])
+    data_unet = SensorDataUnet(**model_config["data_unet"])
     data_unet.train()
 
     if args.unet_checkpoint is not None:
@@ -112,7 +112,7 @@ if __name__ == "__main__":
                 if (epoch + 1) * i % train_config["log_interval"] == 0:
                     log_images(y, y_pred, y, accelerator, step)
                 if (epoch + 1) * i % train_config["eval_interval"] == 0:
-                    eval_data_unet(data_unet, accelerator, test_dataloader, step)
+                    eval_sensor_data_unet(data_unet, accelerator, test_dataloader, step)
 
         if (epoch + 1) % train_config["save_interval"] == 0:
             accelerator.save(data_unet.state_dict(), f"data_unet_{epoch}.pth")
