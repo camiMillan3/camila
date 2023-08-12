@@ -91,6 +91,7 @@ if __name__ == "__main__":
     )
 
     for epoch in tqdm(range(train_config["epochs"])):
+        loss_since_last_log = 0
         for i, batch in tqdm(enumerate(dataloader)):
             step = (epoch + 1) * i
             with accelerator.accumulate(data_unet):
@@ -104,9 +105,12 @@ if __name__ == "__main__":
                 accelerator.clip_grad_norm_(data_unet.parameters(), 1.0)
                 optimizer.step()
                 optimizer.zero_grad()
+                loss_since_last_log += loss
 
                 if (epoch + 1) * i % train_config["log_interval"] == 0:
-                    accelerator.log({"loss": loss}, step=step)
+                    accelerator.log({"loss": loss_since_last_log / train_config["log_interval"]})
+                    loss_since_last_log = 0
+
                 if (epoch + 1) * i % train_config["log_interval"] == 0:
                     log_images(y, y_pred, y, accelerator, step)
                 if (epoch + 1) * i % train_config["eval_interval"] == 0:

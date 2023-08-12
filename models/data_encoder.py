@@ -34,7 +34,7 @@ class SensorDataEncoderConv(nn.Module):
         self.in_block = nn.Sequential(
             nn.Conv2d(input_channels, channels[0], kernel_size=1),
             nn.BatchNorm2d(channels[0]),
-            nn.ReLU(),
+            nn.LeakyReLU(inplace=True)
         )
 
         for i in range(len(channels) - 1):
@@ -42,7 +42,7 @@ class SensorDataEncoderConv(nn.Module):
                 nn.Sequential(
                     nn.Conv2d(channels[i], channels[i + 1], kernel_size=kernels[i], padding="same"),
                     nn.BatchNorm2d(channels[i + 1]),
-                    nn.LeakyReLU(),
+                    nn.LeakyReLU(inplace=True)
                 )
             )
 
@@ -51,9 +51,19 @@ class SensorDataEncoderConv(nn.Module):
                 nn.Sequential(
                     nn.Conv2d(channels[i], channels[i + 1], kernel_size=1),
                     nn.BatchNorm2d(channels[i + 1]),
-                    nn.LeakyReLU(),
+                    nn.LeakyReLU(inplace=True)
                 )
             )
+
+        if bottleneck_shape[1] == 16:
+            self.downsample = nn.Identity()
+        elif bottleneck_shape[1] == 8:
+            self.downsample = nn.AvgPool2d(2)
+        elif bottleneck_shape[1] == 4:
+            self.downsample = nn.AvgPool2d(4)
+        else:
+            raise ValueError("Invalid bottleneck shape")
+
 
         self.out_block = nn.Sequential(
             nn.Conv2d(channels[-1], bottleneck_shape[0], kernel_size=1),
@@ -61,7 +71,11 @@ class SensorDataEncoderConv(nn.Module):
         )
         self.out_fc = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
-        self.out_act = nn.Tanh()
+
+        self.out_act = nn.LeakyReLU(inplace=True)
+        self.out_fc2 = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
+                                bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
+        self.out_act2 = nn.Tanh()
 
         self.blocks = nn.Sequential(*blocks)
         self.skip_blocks = nn.Sequential(*skip_blocks)
@@ -77,10 +91,15 @@ class SensorDataEncoderConv(nn.Module):
         for i in range(len(self.blocks)):
             x = self.blocks[i](x) + self.skip_blocks[i](x)
 
+        x = self.downsample(x)
+
         x = self.out_block(x)
         x = x.view(x.size(0), -1)
+
         x = self.out_fc(x)
         x = self.out_act(x)
+        x = self.out_fc2(x)
+        x = self.out_act2(x)
         x = x.view(x.size(0), *self.bottleneck_shape)
 
         return x
@@ -99,12 +118,12 @@ class SensorDataEncoderDense(nn.Module):
             layers.extend([
                 nn.Linear(units[i], units[i + 1]),
                 nn.BatchNorm1d(units[i + 1]),
-                nn.ReLU(),
+                nn.LeakyReLU(inplace=True)
             ])
 
         layers.append(nn.Linear(units[-1], bottleneck_units))
         layers.append(nn.BatchNorm1d(bottleneck_units))
-        layers.append(nn.ReLU())
+        layers.append(nn.LeakyReLU(inplace=True))
 
         self.fc_blocks = nn.Sequential(*layers)
 

@@ -5,15 +5,15 @@ models:
     encoder_name: vgg16 # efficientnet-b2
     encoder_weights: 'imagenet'
     activation: 'sigmoid'
-    depth: 4
-    decoder_channels: [128, 64, 32, 16]
+    depth: 3
+    decoder_channels: [256, 128, 64]
     bottleneck_shape: [1, 16, 16]
     decoder_use_batchnorm: True
 
   data_unet: # should be the same as unet
     activation: 'sigmoid'
-    depth: 4
-    decoder_channels:  [128, 64, 32, 16]
+    depth: 3
+    decoder_channels:  [256, 128, 64]
     bottleneck_shape: [1, 16, 16]
     decoder_use_batchnorm: True
     encoder_type: cnn
@@ -50,8 +50,8 @@ test_dataloader:
 optimizer:
   kwargs:
     lr: 0.0001
-    betas: [0.5, 0.999]
-    weight_decay: 0.1
+    betas: [0.9, 0.999]
+    weight_decay: 0.01
     amsgrad: False
 
 train:
@@ -59,6 +59,6 @@ train:
   image_size: 128
 
   log_image_interval: 500
-  log_interval: 50
+  log_interval: 200
   eval_interval: 500
   save_interval: 10 # is epochs
