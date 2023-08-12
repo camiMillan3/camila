@@ -1,16 +1,14 @@
-import torch
-import torchvision
-from einops import rearrange
+import argparse
 
-import wandb
+import torch
+import torchinfo
+import torchvision
 import yaml
 from accelerate import Accelerator
-import argparse
-import torchinfo
 from tqdm import tqdm
 
-from dataset import ObservationDataset, get_y_train_transforms, get_y_test_transforms
-from models.unet import Unet, SensorDataUnet
+from dataset import ObservationDataset, get_y_test_transforms
+from models.unet import SensorDataUnet
 from utils import log_images, eval_sensor_data_unet
 
 

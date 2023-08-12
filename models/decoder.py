@@ -35,25 +35,6 @@ class DecoderBlock(nn.Module):
         return x
 
 
-class CenterBlock(nn.Sequential):
-    def __init__(self, in_channels, out_channels, use_batchnorm=True):
-        conv1 = md.Conv2dReLU(
-            in_channels,
-            out_channels,
-            kernel_size=3,
-            padding=1,
-            use_batchnorm=use_batchnorm,
-        )
-        conv2 = md.Conv2dReLU(
-            out_channels,
-            out_channels,
-            kernel_size=3,
-            padding=1,
-            use_batchnorm=use_batchnorm,
-        )
-        super().__init__(conv1, conv2)
-
-
 class ReconstructionHead(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size=3, activation=None):
         conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2)
@@ -96,8 +77,7 @@ class Decoder(nn.Module):
         self.bottleneck_shape = bottleneck_shape
 
         self.in_fc = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
-                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
-
+                               bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
 
     def forward(self, x, output_size=(128, 128)):
         n_upsample_blocks = len(self.blocks)

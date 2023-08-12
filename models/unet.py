@@ -8,6 +8,7 @@ from models.encoder import Encoder
 
 
 # We need a AutoEncoder with bottleneck. For the Encoder, we can use a pretrained model.
+# Code adapted from `segmentation_models_pytorch`
 
 class Unet(nn.Module):
     """Unet_ is a fully convolution neural network for image semantic segmentation. Consist of *encoder*

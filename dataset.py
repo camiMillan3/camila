@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torchvision
 from torch.utils.data import Dataset
 from torchvision.transforms import InterpolationMode, ColorJitter
@@ -18,7 +17,7 @@ class ObservationDataset(Dataset):
     # X_<id>.npy
 
     def __init__(self, path, x_transform=None,
-                    y_transform=None, y_min=0, y_max=6):
+                 y_transform=None, y_min=0, y_max=6):
         super().__init__()
 
         self.path = os.path.abspath(path)
@@ -48,12 +47,10 @@ class ObservationDataset(Dataset):
         _id, _file = self.data[idx]
         y = np.load(_file)
         x = np.load(os.path.join(self.path, f'X_{_id}.npy'))
-        # x = rearrange(x, 'h w c -> c h w')
 
         y = np.expand_dims(y, axis=-1)
         # normalize to [0, 1]
         y = min_max_scale(y, self.y_min, self.y_max)
-
 
         if self.y_transform is not None:
             y = self.y_transform(y)
@@ -73,10 +70,11 @@ class AddGaussianNoise(object):
 
     def __call__(self, tensor):
         device = tensor.device
-        return tensor + torch.randn(tensor.size(),device=device) * self.std + self.mean
+        return tensor + torch.randn(tensor.size(), device=device) * self.std + self.mean
 
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
 
 class TensorMaskedColorJitter:
     def __init__(self, brightness=0, contrast=0, saturation=0, hue=0, except_values=(0,)):
@@ -84,7 +82,6 @@ class TensorMaskedColorJitter:
         self.except_values = except_values
 
     def __call__(self, tensor):
-
         # Apply the color jitter transformation to the PIL Image
         output_tensor = self.color_jitter(tensor)
 
@@ -97,20 +94,21 @@ class TensorMaskedColorJitter:
 
         return output_tensor
 
+
 def get_y_train_transforms(image_size):
     return torchvision.transforms.Compose(
-    [
-        torchvision.transforms.Resize((image_size, image_size)),
-        RandomAffine(degrees=180, fill=0, interpolation=InterpolationMode.BILINEAR),
-        #TensorMaskedColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4),
-        #AddGaussianNoise(0., 0.01),
-     ]
-)
+        [
+            torchvision.transforms.Resize((image_size, image_size)),
+            RandomAffine(degrees=180, fill=0, interpolation=InterpolationMode.BILINEAR),
+            # TensorMaskedColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4),
+            # AddGaussianNoise(0., 0.01),
+        ]
+    )
+
 
 def get_y_test_transforms(image_size):
     return torchvision.transforms.Compose(
-    [
-        torchvision.transforms.Resize((image_size, image_size)),
-     ]
-)
-
+        [
+            torchvision.transforms.Resize((image_size, image_size)),
+        ]
+    )
