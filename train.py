@@ -10,7 +10,7 @@ import torchinfo
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from dataset import ObservationDataset, AddGaussianNoise, get_train_transforms, get_test_transforms
+from dataset import ObservationDataset, AddGaussianNoise, get_y_train_transforms, get_y_test_transforms
 from models.unet import Unet
 from utils import eval_unet, log_images
 
@@ -73,8 +73,8 @@ if __name__ == "__main__":
 
     unet, optimizer, dataloader = accelerator.prepare(unet, optimizer, dataloader)
 
-    train_transform = get_train_transforms(image_size)
-    test_transform = get_test_transforms(image_size)
+    train_transform = get_y_train_transforms(image_size)
+    test_transform = get_y_test_transforms(image_size)
 
     for epoch in tqdm(range(train_config["epochs"])):
         for i, batch in tqdm(enumerate(dataloader)):

@@ -2,7 +2,7 @@ from typing import Optional, List, Union
 from segmentation_models_pytorch.base import initialization
 from torch import nn
 
-from models.data_encoder import DataEncoder
+from models.data_encoder import SensorDataEncoderConv, SensorDataEncoderDense
 from models.decoder import Decoder, ReconstructionHead
 from models.encoder import Encoder
 
@@ -109,6 +109,21 @@ class Unet(nn.Module):
 
         return x
 
+    def forward_with_encoder(self, x):
+        """Sequentially pass `x` trough model`s encoder, decoder and heads"""
+
+        self.check_input_shape(x)
+        input_size = x.shape[-2:]
+
+        x = self.encoder(x)
+        encoder_output = x
+
+        x = self.decoder(x, output_size=input_size)
+
+        x = self.reconstruction_head(x)
+
+        return x, encoder_output
+
 
 class DataUnet(nn.Module):
     def __init__(
@@ -119,12 +134,20 @@ class DataUnet(nn.Module):
             decoder_channels: List[int] = (256, 128, 64, 32, 16),
             activation: Optional[Union[str, callable]] = None,
             bottleneck_shape: List[int] = (1, 16, 16),
+            encoder_type="cnn"
     ):
         super().__init__()
 
-        self.encoder = DataEncoder(
-            **encoder_params,
-        )
+        if encoder_type == "cnn":
+            self.encoder = SensorDataEncoderConv(
+                **encoder_params,
+            )
+        elif encoder_type == "dense":
+            self.encoder = SensorDataEncoderDense(
+                **encoder_params,
+            )
+        else:
+            raise ValueError("encoder_type must be one of 'cnn' or 'dense'")
 
         self.decoder = Decoder(
             decoder_channels=decoder_channels,

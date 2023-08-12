@@ -13,7 +13,7 @@ class Encoder(nn.Module):
         self._bottleneck = nn.Sequential(
             nn.Conv2d(self._encoder.out_channels[-1], bottleneck_shape[0], kernel_size=1),
             nn.BatchNorm2d(bottleneck_shape[0]),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.AdaptiveAvgPool2d(bottleneck_shape[1:]),
         )
 

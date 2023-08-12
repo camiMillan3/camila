@@ -70,7 +70,7 @@ class AddGaussianNoise(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
-def get_train_transforms(image_size):
+def get_y_train_transforms(image_size):
     return torchvision.transforms.Compose(
     [
         #RandomAffine(degrees=5, translate=(0.3, 0.3), scale=(0.7, 1.3), shear=5, fill=0),
@@ -79,9 +79,13 @@ def get_train_transforms(image_size):
      ]
 )
 
-def get_test_transforms(image_size):
+def get_y_test_transforms(image_size):
     return torchvision.transforms.Compose(
     [
         torchvision.transforms.Resize((image_size, image_size)),
      ]
 )
+
+
+def normalize(x):
+    return (x - x.min()) / (x.max() - x.min())
