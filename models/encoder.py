@@ -9,6 +9,9 @@ class Encoder(nn.Module):
         super().__init__(*args, **kwargs)
         self._encoder = get_encoder(encoder_name, in_channels=in_channels, depth=depth, weights=weights)
 
+        assert bottleneck_shape[1] in [4, 8, 16] and bottleneck_shape[2] in [4, 8, 16], \
+            "bottleneck height and width must be one of [4, 8, 16]"
+
         self._out_block = nn.Sequential(
             nn.Conv2d(self._encoder.out_channels[-1], self._encoder.out_channels[-1], kernel_size=3, padding=0),
             nn.BatchNorm2d(self._encoder.out_channels[-1]),
