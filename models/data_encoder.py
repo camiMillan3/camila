@@ -75,7 +75,7 @@ class SensorDataEncoderConv(nn.Module):
         self.out_act = nn.LeakyReLU(inplace=True)
         self.out_fc2 = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
-        self.out_act2 = nn.Tanh()
+        self.out_act2 = nn.Sigmoid()
 
         self.blocks = nn.Sequential(*blocks)
         self.skip_blocks = nn.Sequential(*skip_blocks)
