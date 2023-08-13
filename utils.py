@@ -32,10 +32,15 @@ def eval_unet(unet, accelerator, test_dataloader, step, test_transform):
         encoding = rearrange(encoding, 'b c h w -> b h w c').detach().cpu().numpy()
         test_batch_images = [wandb.Image(img) for img in test_batch]
         test_output_images = [wandb.Image(img) for img in test_output]
-        encoding_images = [wandb.Image(img) for img in encoding]
+        encoding_images = {}
+        if encoding.shape[-1] not in [1, 3]:
+            for c in range(encoding.shape[-1]):
+                encoding_images[f"test encoding channel_{c}"] = [wandb.Image(img) for img in encoding[:, :, :, c]]
+        else:
+            encoding_images["test encoding"] = [wandb.Image(img) for img in encoding]
 
         accelerator.log({"test_loss": test_loss, "test_target": test_batch_images,
-                         "test_output": test_output_images, "encoding": encoding_images},
+                         "test_output": test_output_images, **encoding_images},
                         step=step)
     unet.train()
 

@@ -10,11 +10,12 @@ class Encoder(nn.Module):
         self._encoder = get_encoder(encoder_name, in_channels=in_channels, depth=depth, weights=weights)
 
         self._out_block = nn.Sequential(
-            #nn.Conv2d(self._encoder.out_channels[-1], self._encoder.out_channels[-1], kernel_size=3, padding=1),
-            #nn.LeakyReLU(inplace=True),
+            nn.Conv2d(self._encoder.out_channels[-1], self._encoder.out_channels[-1], kernel_size=3, padding=0),
+            nn.BatchNorm2d(self._encoder.out_channels[-1]),
+            nn.LeakyReLU(inplace=True),
             nn.AdaptiveAvgPool2d(bottleneck_shape[1:]),
             nn.Conv2d(self._encoder.out_channels[-1], bottleneck_shape[0], kernel_size=1),
-            nn.Sigmoid(),
+            nn.Sigmoid()
         )
 
         self.bottleneck_shape = bottleneck_shape

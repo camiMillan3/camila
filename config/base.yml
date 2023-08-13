@@ -7,18 +7,18 @@ models:
     activation: 'sigmoid'
     depth: 3
     decoder_channels: [256, 128, 64]
-    bottleneck_shape: [1, 16, 16]
+    bottleneck_shape: [3, 8, 8]
     decoder_use_batchnorm: True
 
   data_unet: # should be the same as unet
     activation: 'sigmoid'
     depth: 3
-    decoder_channels:  [256, 128, 64]
-    bottleneck_shape: [1, 16, 16]
+    decoder_channels: [256, 128, 64]
+    bottleneck_shape: [3, 9, 9]
     decoder_use_batchnorm: True
     encoder_type: cnn
     encoder_params:
-      bottleneck_shape: [1, 16, 16]
+      bottleneck_shape: [3, 8, 8]
       channels: [ 8, 16, 32]
       kernels: [ 3, 5, 7 ]
     #encoder_type: dense

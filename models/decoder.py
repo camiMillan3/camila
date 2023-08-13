@@ -76,7 +76,7 @@ class Decoder(nn.Module):
         self.blocks = nn.ModuleList(blocks)
         self.bottleneck_shape = bottleneck_shape
         self.in_conv = nn.Sequential(
-            nn.Conv2d(bottleneck_shape[0], bottleneck_shape[0], kernel_size=1),
+            nn.Conv2d(bottleneck_shape[0], bottleneck_shape[0], kernel_size=3, padding=1),
             nn.LeakyReLU(inplace=True),
         )
 
@@ -84,7 +84,9 @@ class Decoder(nn.Module):
         n_upsample_blocks = len(self.blocks)
         h, w = output_size
         x = F.interpolate(x, size=(h // 2 ** n_upsample_blocks, w // 2 ** n_upsample_blocks), mode="nearest")
+        skip = x
         x = self.in_conv(x)
+        x = x + skip
 
         for i, decoder_block in enumerate(self.blocks):
             x = decoder_block(x)

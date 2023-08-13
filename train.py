@@ -50,6 +50,8 @@ if __name__ == "__main__":
     unet = Unet(**model_config["unet"])
     unet.train()
 
+    wandb.watch(unet, log="all", log_freq=300)
+
     if args.unet_checkpoint is not None:
         torch.load(args.unet_checkpoint)
         unet.load_state_dict(torch.load(args.unet_checkpoint), strict=True)
