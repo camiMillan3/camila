@@ -3,7 +3,7 @@
 ## Train the Autoencoder
 
 ```bash
-accelerate launch train.py --config_file config/base.yaml
+accelerate launch train.py --config_file config/base.yml
 ```
 
 As the latent space is the same for each image input size (1x16x16), the model can be trained on lower 
