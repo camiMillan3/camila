@@ -84,11 +84,11 @@ if __name__ == "__main__":
     train_transform = get_y_train_transforms(image_size)
     test_transform = get_y_test_transforms(image_size)
 
+    step = 0
     for epoch in tqdm(range(train_config["epochs"])):
         loss_since_last_log = 0
 
         for i, batch in tqdm(enumerate(dataloader)):
-            step = (epoch + 1) * i
             with accelerator.accumulate(unet):
                 batch = batch[0]
                 gt = batch.to(torch.float32)  # workaround
@@ -111,6 +111,7 @@ if __name__ == "__main__":
                 if (epoch + 1) * i % train_config["eval_interval"] == 0:
                     eval_unet(unet, accelerator, test_dataloader, step=step,
                               test_transform=test_transform)
+            step += 1
 
         if (epoch + 1) % train_config["save_interval"] == 0:
             accelerator.save(unet.state_dict(), f"unet_{epoch}.pth")
