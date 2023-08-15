@@ -22,7 +22,7 @@ class RunningStatistics(nn.Module):
 
         return x
 
-class Interpolate(nn.Module)
+class Interpolate(nn.Module):
 
     def __init__(self, size, mode):
         self.size = size
