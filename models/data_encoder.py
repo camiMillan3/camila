@@ -109,7 +109,7 @@ class SensorDataEncoderConv(nn.Module):
         x = self.in_block(x)
 
         for i in range(len(self.blocks)):
-            x = self.blocks[i](x) + self.skip_blocks[i](x)
+            x = self.blocks[i](x) + self.skip_blocks[i](x) # skip could also be achieved by torch.cat([x, x], dim=1), or remove completely
 
         x = self.downsample(x)
 
