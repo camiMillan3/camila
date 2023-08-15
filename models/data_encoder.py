@@ -128,7 +128,7 @@ class SensorDataEncoderConv(nn.Module):
 class SensorDataEncoderDense(nn.Module):
     # input data is 16x16x2
     # output data is 16x16x1 (depends on the image size and the number of channels)
-    def __init__(self, hidden_units=(512, 256, 128), bottleneck_units=256, input_units=16 * 16 * 2):
+    def __init__(self, hidden_units=(512, 256, 128), bottleneck_shape=(1, 16, 16), input_units=16 * 16 * 2):
         super().__init__()
 
         layers = []
@@ -141,14 +141,15 @@ class SensorDataEncoderDense(nn.Module):
                 nn.LeakyReLU(inplace=True)
             ])
 
-        layers.append(nn.Linear(units[-1], bottleneck_units))
-        layers.append(nn.BatchNorm1d(bottleneck_units))
+        layers.append(nn.Linear(units[-1], bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
+        layers.append(nn.BatchNorm1d(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2]))
         layers.append(nn.LeakyReLU(inplace=True))
 
         self.fc_blocks = nn.Sequential(*layers)
         self.act_out = nn.Sigmoid()
 
         self.running_stats = RunningStatistics(input_units)
+        self.bottleneck_shape = bottleneck_shape
 
     def forward(self, x):
         # Flatten the input for dense processing
@@ -157,7 +158,7 @@ class SensorDataEncoderDense(nn.Module):
         x = self.fc_blocks(x)
 
         # Reshape the output to be spatial (for compatibility with the earlier design)
-        x = x.view(x.size(0), 1, 16, 16)
+        x = x.view(x.size(0), *self.bottleneck_shape)
         self.act_out(x)
 
         return x
