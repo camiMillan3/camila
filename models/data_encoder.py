@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.Functional as F 
 
 
 def min_max_scale(x, min_value, max_value):
@@ -21,10 +22,19 @@ class RunningStatistics(nn.Module):
 
         return x
 
+class Interpolate(nn.Module)
+
+    def __init__(self, size, mode):
+        self.size = size
+        self.mode = mode
+
+    def forward(x)
+        return F.interpolate(x, size=self.size, mode=self.mode)
+
 
 class SensorDataEncoderConv(nn.Module):
-    # input data is 16x16x2
-    # output data is 16x16x1 (depends on the image size and the number of channels)
+    # input data is 2x16x16
+    # output data is 1x16x16 (depends on the image size and the number of channels) or 3x8x8
     def __init__(self, channels=(16, 32, 64), bottleneck_shape=(1, 16, 16), input_channels=2,
                  kernels=(3, 3, 3)):
         super().__init__()
@@ -62,7 +72,7 @@ class SensorDataEncoderConv(nn.Module):
         elif bottleneck_shape[1] == 4:
             self.downsample = nn.AvgPool2d(4)
         else:
-            raise ValueError("Invalid bottleneck shape")
+            self.downsample = Interpolate(size=(bottleneck_shape[0], bottleneck_shape[1]), mode='nearest')
 
 
         self.out_block = nn.Sequential(
