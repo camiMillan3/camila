@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-import torch.nn.Functional as F 
+import torch.nn.functional as F
 
 
 def min_max_scale(x, min_value, max_value):
@@ -24,11 +24,12 @@ class RunningStatistics(nn.Module):
 
 class Interpolate(nn.Module):
 
-    def __init__(self, size, mode):
+    def __init__(self, size, mode, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.size = size
         self.mode = mode
 
-    def forward(x)
+    def forward(self, x):
         return F.interpolate(x, size=self.size, mode=self.mode)
 
 
@@ -141,7 +142,7 @@ class SensorDataEncoderDense(nn.Module):
                 nn.LeakyReLU(inplace=True)
             ])
 
-        layers.append(nn.Linear(units[-1], bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
+        layers.append(nn.Linear(units[-1], bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2]))
         layers.append(nn.BatchNorm1d(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2]))
         layers.append(nn.LeakyReLU(inplace=True))
 
