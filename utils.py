@@ -5,7 +5,18 @@ import wandb
 from einops import rearrange
 
 from models.unet import SensorDataUnet
+import matplotlib.pyplot as plt
 
+def apply_colormap(images, cmap='jet'):
+    # Get the colormap
+    cm = plt.get_cmap(cmap)
+
+    colored_images = cm(images[:, :, :, 0])
+
+    # Convert RGBA to RGB
+    rgb_images = colored_images[:, :, :, :3]
+
+    return rgb_images
 
 def load_config(config_file_path):
     with open(config_file_path) as f:
@@ -23,7 +34,7 @@ def load_config(config_file_path):
     return config, model_config, optim_config, dataset_config, test_dataset_config, dataloader_config, test_dataloader_config, train_config, image_size
 
 
-def eval_unet(unet, accelerator, test_dataloader, step, test_transform):
+def eval_unet(unet, accelerator, test_dataloader, step, test_transform, color_map="jet"):
     unet.eval()
     with torch.no_grad():
         test_loss = 0
@@ -48,6 +59,8 @@ def eval_unet(unet, accelerator, test_dataloader, step, test_transform):
         test_batch = rearrange(test_batch, 'b c h w -> b h w c').detach().cpu().numpy()
         test_output = rearrange(test_output, 'b c h w -> b h w c').detach().cpu().numpy()
         encoding = rearrange(encoding, 'b c h w -> b h w c').detach().cpu().numpy()
+        test_batch = apply_colormap(test_batch, cmap=color_map)
+        test_output = apply_colormap(test_output, cmap=color_map)
         test_batch_images = [wandb.Image(img) for img in test_batch]
         test_output_images = [wandb.Image(img) for img in test_output]
         encoding_images = {}
@@ -62,10 +75,13 @@ def eval_unet(unet, accelerator, test_dataloader, step, test_transform):
                         step=step)
     unet.train()
 
-def log_images(gt, y_pred, y, accelerator, step):
+def log_images(gt, y_pred, y, accelerator, step, color_map="jet"):
     gt = rearrange(gt, 'b c h w -> b h w c').detach().cpu().numpy()
     y = rearrange(y, 'b c h w -> b h w c').detach().cpu().numpy()
     y_pred = rearrange(y_pred, 'b c h w -> b h w c').detach().cpu().numpy()
+    gt = apply_colormap(gt, cmap=color_map)
+    y = apply_colormap(y, cmap=color_map)
+    y_pred = apply_colormap(y_pred, cmap=color_map)
     gt = [wandb.Image(img) for img in gt]
     y_pred = [wandb.Image(img) for img in y_pred]
     y = [wandb.Image(img) for img in y]
@@ -95,6 +111,8 @@ def eval_sensor_data_unet(data_unet: SensorDataUnet, accelerator, test_dataloade
 
         test_batch = rearrange(test_batch, 'b c h w -> b h w c').detach().cpu().numpy()
         test_output = rearrange(test_output, 'b c h w -> b h w c').detach().cpu().numpy()
+        test_batch = apply_colormap(test_batch, cmap="jet")
+        test_output = apply_colormap(test_output, cmap="jet")
         encoding = rearrange(encoding, 'b c h w -> b h w c').detach().cpu().numpy()
         test_batch_images = [wandb.Image(img) for img in test_batch]
         test_output_images = [wandb.Image(img) for img in test_output]
