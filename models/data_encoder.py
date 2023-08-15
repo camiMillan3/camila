@@ -36,17 +36,23 @@ class SensorDataEncoderConv(nn.Module):
     # input data is 2x16x16
     # output data is 1x16x16 (depends on the image size and the number of channels) or 3x8x8
     def __init__(self, channels=(16, 32, 64), bottleneck_shape=(1, 16, 16), input_channels=2,
-                 kernels=(3, 3, 3)):
+                 kernels=(3, 5, 7)):
         super().__init__()
+        self.bottleneck_shape = bottleneck_shape
+
+        # in 2x16x16, out 2x16x16
+        self.running_stats = RunningStatistics(input_channels)
+        
         blocks = []
         skip_blocks = []
 
+        # in: 2x16x16, out: 16x16x16
         self.in_block = nn.Sequential(
             nn.Conv2d(input_channels, channels[0], kernel_size=1),
             nn.BatchNorm2d(channels[0]),
             nn.LeakyReLU(inplace=True)
         )
-
+        # in: 2x16x16, out: 64x16x16
         for i in range(len(channels) - 1):
             blocks.append(
                 nn.Sequential(
@@ -65,6 +71,13 @@ class SensorDataEncoderConv(nn.Module):
                 )
             )
 
+        
+        self.blocks = nn.Sequential(*blocks)
+        self.skip_blocks = nn.Sequential(*skip_blocks)
+
+        # downsampling or interpolation are needed when the bottleneck spatial shape differs from the 
+        # shape of the sensor data. 
+        # TODO: This could also be solved by using downsampling between convolutional layers
         if bottleneck_shape[1] == 16:
             self.downsample = nn.Identity()
         elif bottleneck_shape[1] == 8:
@@ -74,24 +87,21 @@ class SensorDataEncoderConv(nn.Module):
         else:
             self.downsample = Interpolate(size=(bottleneck_shape[0], bottleneck_shape[1]), mode='nearest')
 
-
+        # in: 64x16x16, out: 1x16x16
         self.out_block = nn.Sequential(
             nn.Conv2d(channels[-1], bottleneck_shape[0], kernel_size=1),
             nn.BatchNorm2d(bottleneck_shape[0]),
         )
+
+        # in: 1x16x16, out: 1x16x16       
         self.out_fc = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
 
         self.out_act = nn.LeakyReLU(inplace=True)
         self.out_fc2 = nn.Linear(bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2],
                                 bottleneck_shape[0] * bottleneck_shape[1] * bottleneck_shape[2])
-        self.out_act2 = nn.Sigmoid()
+        self.out_act2 = nn.Sigmoid() # output between 0 and 1
 
-        self.blocks = nn.Sequential(*blocks)
-        self.skip_blocks = nn.Sequential(*skip_blocks)
-        self.bottleneck_shape = bottleneck_shape
-
-        self.running_stats = RunningStatistics(input_channels)
 
     def forward(self, x):
         x = self.running_stats(x)
@@ -136,6 +146,7 @@ class SensorDataEncoderDense(nn.Module):
         layers.append(nn.LeakyReLU(inplace=True))
 
         self.fc_blocks = nn.Sequential(*layers)
+        self.act_out = nn.Sigmoid()
 
         self.running_stats = RunningStatistics(input_units)
 
@@ -147,5 +158,6 @@ class SensorDataEncoderDense(nn.Module):
 
         # Reshape the output to be spatial (for compatibility with the earlier design)
         x = x.view(x.size(0), 1, 16, 16)
+        self.act_out(x)
 
         return x
