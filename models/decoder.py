@@ -67,10 +67,8 @@ class Decoder(nn.Module):
         in_channels = [head_channels] + list(decoder_channels[:-1])
         out_channels = decoder_channels
 
-        # combine decoder keyword arguments
-        kwargs = dict(use_batchnorm=use_batchnorm)
         blocks = [
-            DecoderBlock(in_ch, out_ch, **kwargs)
+            DecoderBlock(in_ch, out_ch, use_batchnorm=use_batchnorm)
             for in_ch, out_ch in zip(in_channels, out_channels)
         ]
         self.blocks = nn.ModuleList(blocks)
