@@ -90,10 +90,10 @@ if __name__ == "__main__":
         config=config,
     )
 
+    step = 0
     for epoch in tqdm(range(train_config["epochs"])):
         loss_since_last_log = 0
         for i, batch in tqdm(enumerate(dataloader)):
-            step = (epoch + 1) * i
             with accelerator.accumulate(data_unet):
                 y, x, _ = batch
                 y = y.to(torch.float32)  # workaround
@@ -115,6 +115,7 @@ if __name__ == "__main__":
                     log_images(y, y_pred, y, accelerator, step)
                 if (epoch + 1) * i % train_config["eval_interval"] == 0:
                     eval_sensor_data_unet(data_unet, accelerator, test_dataloader, step)
+            step += 1
 
         if (epoch + 1) % train_config["save_interval"] == 0:
             accelerator.save(data_unet.state_dict(), f"data_unet_{epoch}.pth")
