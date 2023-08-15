@@ -120,4 +120,5 @@ if __name__ == "__main__":
         if (epoch + 1) % train_config["save_interval"] == 0:
             accelerator.save(data_unet.state_dict(), f"data_unet_{epoch}.pth")
 
+    accelerator.save(data_unet.state_dict(), "data_unet_final.pth")
     accelerator.end_training()
