@@ -75,8 +75,6 @@ class Decoder(nn.Module):
             nn.LeakyReLU(inplace=True),
         )
 
-        self.reconstruction_head = ReconstructionHead(out_channels[0], out_channels[1], kernel_size=1)
-
     def forward(self, x, output_size=(128, 128)):
         n_upsample_blocks = len(self.blocks)
         h, w = output_size
@@ -87,7 +85,5 @@ class Decoder(nn.Module):
 
         for i, decoder_block in enumerate(self.blocks):
             x = decoder_block(x)
-
-        x = self.reconstruction_head(x)
 
         return x
