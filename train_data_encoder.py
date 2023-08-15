@@ -3,13 +3,14 @@ import argparse
 import torch
 import torchinfo
 import torchvision
+import wandb
 import yaml
 from accelerate import Accelerator
 from tqdm import tqdm
 
 from dataset import ObservationDataset, get_y_test_transforms
 from models.unet import SensorDataUnet
-from utils import log_images, eval_sensor_data_unet
+from utils import log_images, eval_sensor_data_unet, load_config
 
 
 def parse_args():
@@ -23,23 +24,22 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    with open(args.config_file) as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-
-    model_config = config["models"]
-    optim_config = config["optimizer"]
-    dataset_config = config["dataset"]
-    test_dataset_config = config["test_dataset"]
-    dataloader_config = config["dataloader"]
-    test_dataloader_config = config["test_dataloader"]
-    train_config = config["train"]
-    image_size = train_config["image_size"]
+    (config, model_config, optim_config, dataset_config, test_dataset_config,
+     dataloader_config, test_dataloader_config, train_config, image_size) = load_config(args.config_file)
 
     # Tell the Accelerator object to log with wandb
     accelerator = Accelerator(log_with="wandb")
 
+    # Initialise your wandb run, passing wandb parameters and any config information
+    accelerator.init_trackers(
+        project_name=config["name"] + "_data_unet",
+        config=config,
+    )
+
     data_unet = SensorDataUnet(**model_config["data_unet"])
     data_unet.train()
+
+    wandb.watch(data_unet, log="all", log_freq=300)
 
     if args.unet_checkpoint is not None:
         torch.load(args.unet_checkpoint)

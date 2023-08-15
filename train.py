@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from dataset import ObservationDataset, AddGaussianNoise, get_y_train_transforms, get_y_test_transforms
 from models.unet import Unet
-from utils import eval_unet, log_images
+from utils import eval_unet, log_images, load_config
 
 
 def parse_args():
@@ -26,24 +26,14 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    with open(args.config_file) as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-
-    model_config = config["models"]
-    optim_config = config["optimizer"]
-    dataset_config = config["dataset"]
-    test_dataset_config = config["test_dataset"]
-    dataloader_config = config["dataloader"]
-    test_dataloader_config = config["test_dataloader"]
-    train_config = config["train"]
-    image_size = train_config["image_size"]
-
+    (config, model_config, optim_config, dataset_config, test_dataset_config,
+     dataloader_config, test_dataloader_config, train_config, image_size) = load_config(args.config_file)
     # Tell the Accelerator object to log with wandb
     accelerator = Accelerator(log_with="wandb")
 
     # Initialise your wandb run, passing wandb parameters and any config information
     accelerator.init_trackers(
-        project_name=config["name"],
+        project_name=config["name"] + "_unet",
         config=config,
     )
 

@@ -1,8 +1,26 @@
 import torch
+import yaml
+
 import wandb
 from einops import rearrange
 
 from models.unet import SensorDataUnet
+
+
+def load_config(config_file_path):
+    with open(config_file_path) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    model_config = config["models"]
+    optim_config = config["optimizer"]
+    dataset_config = config["dataset"]
+    test_dataset_config = config["test_dataset"]
+    dataloader_config = config["dataloader"]
+    test_dataloader_config = config["test_dataloader"]
+    train_config = config["train"]
+    image_size = train_config["image_size"]
+
+    return config, model_config, optim_config, dataset_config, test_dataset_config, dataloader_config, test_dataloader_config, train_config, image_size
 
 
 def eval_unet(unet, accelerator, test_dataloader, step, test_transform):
