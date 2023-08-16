@@ -4,8 +4,7 @@ import numpy as np
 import torch
 import torchvision
 from torch.utils.data import Dataset
-from torchvision.transforms import InterpolationMode, ColorJitter
-from torchvision.transforms.v2 import RandomAffine
+from torchvision.transforms import InterpolationMode, ColorJitter, RandomAffine
 
 from models.data_encoder import min_max_scale
 
@@ -98,7 +97,7 @@ class TensorMaskedColorJitter:
 def get_y_train_transforms(image_size):
     return torchvision.transforms.Compose(
         [
-            torchvision.transforms.Resize((image_size, image_size)),
+            torchvision.transforms.Resize((image_size, image_size), InterpolationMode.BILINEAR),
             RandomAffine(degrees=180, fill=0, interpolation=InterpolationMode.BILINEAR),
             # TensorMaskedColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4),
             # AddGaussianNoise(0., 0.01),
@@ -109,6 +108,6 @@ def get_y_train_transforms(image_size):
 def get_y_test_transforms(image_size):
     return torchvision.transforms.Compose(
         [
-            torchvision.transforms.Resize((image_size, image_size)),
+            torchvision.transforms.Resize((image_size, image_size), InterpolationMode.NEAREST),
         ]
     )

@@ -28,6 +28,8 @@ if __name__ == "__main__":
     # Tell the Accelerator object to log with wandb
     accelerator = Accelerator(log_with="wandb")
 
+    print("Using device:", accelerator.device)
+
     # Initialise your wandb run, passing wandb parameters and any config information
     accelerator.init_trackers(
         project_name=config["name"] + "_unet",

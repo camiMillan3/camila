@@ -34,7 +34,8 @@ def load_config(config_file_path):
     return config, model_config, optim_config, dataset_config, test_dataset_config, dataloader_config, test_dataloader_config, train_config, image_size
 
 
-def eval_unet(unet, accelerator, test_dataloader, step, test_transform, color_map="jet"):
+def eval_unet(unet, accelerator, test_dataloader, step, test_transform,
+              max_num_images=5, color_map='jet'):
     unet.eval()
     with torch.no_grad():
         test_loss = 0
@@ -47,9 +48,13 @@ def eval_unet(unet, accelerator, test_dataloader, step, test_transform, color_ma
             y = y.to(torch.float32).to(accelerator.device)
             y_pred, encoding = unet.forward_with_encoder(y)
             test_loss += torch.nn.functional.mse_loss(y_pred, y)
-            test_batches.append(y)
-            test_outputs.append(y_pred)
-            encodings.append(encoding)
+
+            if len(test_batches) < max_num_images:
+                test_batches.append(y[0].unsqueeze(0))
+                test_outputs.append(y_pred[0].unsqueeze(0))
+                encodings.append(encoding[0].unsqueeze(0))
+                if len(test_batches) >= max_num_images:
+                    break
 
         test_loss /= len(test_dataloader)
         test_batch = torch.cat(test_batches, dim=0)
@@ -87,7 +92,8 @@ def log_images(gt, y_pred, y, accelerator, step, color_map="jet"):
     y = [wandb.Image(img) for img in y]
     accelerator.log({"gt": gt, "y_pred": y_pred, "y": y}, step=step)
 
-def eval_sensor_data_unet(data_unet: SensorDataUnet, accelerator, test_dataloader, step):
+def eval_sensor_data_unet(data_unet: SensorDataUnet, accelerator, test_dataloader, step,
+                          max_num_images=5, color_map="jet"):
     data_unet.eval()
     with torch.no_grad():
         test_loss = 0
@@ -100,19 +106,25 @@ def eval_sensor_data_unet(data_unet: SensorDataUnet, accelerator, test_dataloade
             x = x.to(torch.float32).to(accelerator.device)
             y_pred, encoding = data_unet.forward_with_encoder(x, y.shape[2:])
             test_loss += torch.nn.functional.mse_loss(y_pred, y)
-            test_batches.append(y)
-            test_outputs.append(y_pred)
-            encodings.append(encoding)
+
+            if len(test_batches) < max_num_images:
+                for i in range(y.shape[0]):
+                    test_batches.append(y[i].unsqueeze(0))
+                    test_outputs.append(y_pred[i].unsqueeze(0))
+                    encodings.append(encoding[i].unsqueeze(0))
+                    if len(test_batches) >= max_num_images:
+                        break
 
         test_loss /= len(test_dataloader)
+
         test_batch = torch.cat(test_batches, dim=0)
         test_output = torch.cat(test_outputs, dim=0)
         encoding = torch.cat(encodings, dim=0)
 
         test_batch = rearrange(test_batch, 'b c h w -> b h w c').detach().cpu().numpy()
         test_output = rearrange(test_output, 'b c h w -> b h w c').detach().cpu().numpy()
-        test_batch = apply_colormap(test_batch, cmap="jet")
-        test_output = apply_colormap(test_output, cmap="jet")
+        test_batch = apply_colormap(test_batch, cmap=color_map)
+        test_output = apply_colormap(test_output, cmap=color_map)
         encoding = rearrange(encoding, 'b c h w -> b h w c').detach().cpu().numpy()
         test_batch_images = [wandb.Image(img) for img in test_batch]
         test_output_images = [wandb.Image(img) for img in test_output]
