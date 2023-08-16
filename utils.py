@@ -35,7 +35,7 @@ def load_config(config_file_path):
 
 
 def eval_unet(unet, accelerator, test_dataloader, step, test_transform,
-              max_num_images=5, color_map='jet'):
+              max_num_images=16, color_map='jet'):
     unet.eval()
     with torch.no_grad():
         test_loss = 0
@@ -93,7 +93,7 @@ def log_images(gt, y_pred, y, accelerator, step, color_map="jet"):
     accelerator.log({"gt": gt, "y_pred": y_pred, "y": y}, step=step)
 
 def eval_sensor_data_unet(data_unet: SensorDataUnet, accelerator, test_dataloader, step,
-                          max_num_images=5, color_map="jet"):
+                          max_num_images=16, color_map="jet"):
     data_unet.eval()
     with torch.no_grad():
         test_loss = 0
